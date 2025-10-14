@@ -65,4 +65,4 @@ if __name__ == "__main__":
     print(result)
 
 # Command to run:
-# python3.11 ./ray-train/min_train.py --num-workers 2 --use-gpu 0 --steps 50"
+# python3.11 ./ray-train/min_train.py --num-workers 2 --use-gpu 0 --steps 50

@@ -18,3 +18,4 @@ typer>=0.9
 scipy>=1.10
 lz4>=4.3
 pytest
+GPUtil>=1.4

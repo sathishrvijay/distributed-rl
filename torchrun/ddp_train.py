@@ -51,7 +51,7 @@ class SyntheticDataset(Dataset):
         return {"inputs": self.inputs[idx], "target": self.targets[idx]}
 
 
-def train(rank: int, world_size: int, config: dict) -> None:
+def train_loop_per_worker(rank: int, world_size: int, config: dict) -> None:
     """Main training function run by each worker process."""
     device = resolve_device(config["use_gpu"])
     verbose = config.get("verbose", False)
@@ -64,9 +64,6 @@ def train(rank: int, world_size: int, config: dict) -> None:
     
     # Create DistributedSampler to shard data across workers
     sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=True, seed=42)
-    
-    # Create DataLoader with the sampler
-    dataloader = DataLoader(dataset, batch_size=config["batch_size"], sampler=sampler, num_workers=0, pin_memory=False)
     
     if verbose:
         print(f"[Rank {rank}] Dataset size: {len(dataset)}, Samples per worker: {len(sampler)}", flush=True)
@@ -96,17 +93,21 @@ def train(rank: int, world_size: int, config: dict) -> None:
         first_param = next(model.parameters())
         print(f"[Rank {rank}] Initial weight sample AFTER DDP: {first_param.flatten()[:3]}", flush=True)
     
-    # Initialize optimizer
+    # Initialize optimizer (no wrapping required like for Ray Train!)
     optimizer = optim.Adam(model.parameters(), lr=config["lr"])
     loss_fn = nn.CrossEntropyLoss()
     
     # Training loop
     step = 0
     num_epochs = config["epochs"]
+    batch_size = config.get("batch_size", 32)
     
     for epoch in range(num_epochs):
         # Set epoch for sampler to ensure different shuffling each epoch
         sampler.set_epoch(epoch)
+        
+        # Create a fresh DataLoader for each epoch
+        dataloader = DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=0, pin_memory=False)
         
         for batch_idx, batch in enumerate(dataloader):
             # Extract inputs and targets from batch
@@ -138,7 +139,7 @@ def train(rank: int, world_size: int, config: dict) -> None:
         print(f"\nTraining completed! Total steps: {step}", flush=True)
 
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTorch Native DDP Training with torchrun")
     parser.add_argument("--use-gpu", type=int, default=0, help="Whether to use GPU (1) or not (0)")
     parser.add_argument("--num-samples", type=int, default=10240, help="Total number of training samples")
@@ -159,21 +160,15 @@ def main():
         # Run training
         config = {"use_gpu": bool(args.use_gpu), "num_samples": args.num_samples, "batch_size": args.batch_size,
                   "epochs": args.epochs, "lr": args.lr, "verbose": args.verbose}
-        train(rank=rank, world_size=world_size, config=config)
+        train_loop_per_worker(rank=rank, world_size=world_size, config=config)
     finally:
         # Clean up distributed resources
         cleanup_distributed()
 
 
-if __name__ == "__main__":
-    main()
-
 # Commands to run:
 # Basic run with 2 workers on CPU, 10240 samples (automatically sharded), 3 epochs:
 # torchrun --nproc_per_node=2 ./torchrun/ddp_train.py --num-samples 10240 --batch-size 32 --epochs 3
-#
-# With custom dataset size and batch size:
-# torchrun --nproc_per_node=2 ./torchrun/ddp_train.py --num-samples 20480 --batch-size 64 --epochs 5
 #
 # With verbose mode to see data sharding and weight synchronization:
 # torchrun --nproc_per_node=2 ./torchrun/ddp_train.py --num-samples 10240 --batch-size 32 --epochs 3 --verbose

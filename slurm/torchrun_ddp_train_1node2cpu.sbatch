@@ -8,7 +8,7 @@
 #SBATCH --error=torchrun_ddp_%j.err
 
 # Activate virtual environment
-source distrrl/bin/activate
+source slurm_setup/.venv/bin/activate
 
 # Change to workspace directory
 cd /Users/vsathish/Development/distributed-rl

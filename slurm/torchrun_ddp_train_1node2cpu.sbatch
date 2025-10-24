@@ -1,9 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=torchrun-ddp-train
 #SBATCH --partition=debug
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=2
+#SBATCH --mem=16G
 #SBATCH --time=00:10:00
 #SBATCH --output=torchrun_ddp_%j.out
 #SBATCH --error=torchrun_ddp_%j.err

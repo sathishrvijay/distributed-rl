@@ -24,7 +24,9 @@ source .venv/bin/activate
 # Install dependencies from pyproject.toml
 echo ""
 echo "Installing dependencies from pyproject.toml..."
-uv pip install -e ..
+cd ..
+uv pip install -e .
+cd "$SCRIPT_DIR"
 
 echo ""
 echo "=========================================="

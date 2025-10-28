@@ -15,7 +15,7 @@
 source slurm_setup/.venv/bin/activate
 
 # Change to workspace directory
-cd /Users/vsathish/Development/distributed-rl
+cd $HOME/Development/distributed-rl
 
 # Run torchrun with 2 worker processes on CPU
 torchrun --nproc_per_node=2 torchrun/ddp_train.py \

@@ -2,7 +2,7 @@
 #SBATCH --job-name=torchrun-ddp-train
 #SBATCH --partition=debug
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=16G
+#SBATCH --mem=2G
 #SBATCH --time=00:10:00
 #SBATCH --output=torchrun_ddp_%j.out
 #SBATCH --error=torchrun_ddp_%j.err
@@ -22,4 +22,4 @@ torchrun --nproc_per_node=2 torchrun/ddp_train.py \
   --num-samples 10240 \
   --batch-size 32 \
   --epochs 3
-
+    

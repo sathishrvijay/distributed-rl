@@ -2,3 +2,17 @@ distrrl/
 */__pycache__/
 */*/__pycache__/
 */runs/
+*egg*/
+bin/
+*.out
+*.err
+*.log
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyzwz
+*.pyzwzw

@@ -56,17 +56,32 @@ echo "Training script completed. Checking Ray logs..."
 RAY_SESSION_DIR=$(ls -td /tmp/ray/session_* 2>/dev/null | head -1)
 if [ -n "$RAY_SESSION_DIR" ]; then
   echo "Ray session directory: $RAY_SESSION_DIR"
-  if [ -d "$RAY_SESSION_DIR/logs" ]; then
+  LOG_ROOT="$RAY_SESSION_DIR/logs"
+  if [ -d "$LOG_ROOT" ]; then
     echo "Available log files:"
-    ls "$RAY_SESSION_DIR/logs"
-    for pattern in "worker-*.out" "trainer_*.out" "python-core-worker*.log" "python-ray_driver*.log"; do
-      for file in "$RAY_SESSION_DIR"/logs/$pattern; do
+    ls "$LOG_ROOT"
+
+    echo ""
+    echo "Collecting trainer/worker logs..."
+    mapfile -t RAY_LOG_FILES < <(find "$LOG_ROOT" -maxdepth 2 -type f \
+      \( -name "worker-*.out" -o -name "worker-*.log" \
+         -name "trainer_*.out" -o -name "trainer_*.log" \
+         -name "python-core-worker*.log" -o -name "python-core-driver*.log" \
+         -name "python-ray_driver*.log" -o -name "python-worker-*.log" \
+      \) 2>/dev/null | sort)
+
+    if [ ${#RAY_LOG_FILES[@]} -gt 0 ]; then
+      for file in "${RAY_LOG_FILES[@]}"; do
         [ -f "$file" ] || continue
         echo ""
+        echo "Printing log file: $file"
         echo "--- Tail of $file ---"
         tail -n 200 "$file"
       done
-    done
+    else
+      echo "No matching trainer/worker logs found. Listing top-level logs for reference:"
+      find "$LOG_ROOT" -maxdepth 2 -type f -print
+    fi
   else
     echo "No logs directory found under Ray session."
   fi

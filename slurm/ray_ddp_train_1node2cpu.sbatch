@@ -46,13 +46,25 @@ RAY_SESSION_DIR=$(ls -td /tmp/ray/session_* 2>/dev/null | head -1)
 if [ -n "$RAY_SESSION_DIR" ]; then
   echo "Ray session directory: $RAY_SESSION_DIR"
   LOG_ROOT="$RAY_SESSION_DIR/logs"
+  ARCHIVE_ROOT="$HOME/Development/distributed-rl/slurm_logs/ray_sessions/$SLURM_JOB_ID"
+  mkdir -p "$ARCHIVE_ROOT"
+
   if [ -d "$LOG_ROOT" ]; then
-    echo "Available log files:"
-    ls "$LOG_ROOT"
+    echo "Copying Ray logs to $ARCHIVE_ROOT"
+    cp -r "$LOG_ROOT" "$ARCHIVE_ROOT/" 2>/dev/null || true
+
+    if [ -d "$ARCHIVE_ROOT/logs" ]; then
+      INSPECT_ROOT="$ARCHIVE_ROOT/logs"
+    else
+      INSPECT_ROOT="$LOG_ROOT"
+    fi
+
+    echo "Available log files (inspect root: $INSPECT_ROOT):"
+    ls "$INSPECT_ROOT"
 
     echo ""
     echo "Collecting trainer/worker logs..."
-    mapfile -t RAY_LOG_FILES < <(find "$LOG_ROOT" -maxdepth 2 -type f \
+    mapfile -t RAY_LOG_FILES < <(find "$INSPECT_ROOT" -maxdepth 2 -type f \
       \( -name "worker-*.out" -o -name "worker-*.log" \
          -name "trainer_*.out" -o -name "trainer_*.log" \
          -name "python-core-worker*.log" -o -name "python-core-driver*.log" \
@@ -69,7 +81,7 @@ if [ -n "$RAY_SESSION_DIR" ]; then
       done
     else
       echo "No matching trainer/worker logs found. Listing top-level logs for reference:"
-      find "$LOG_ROOT" -maxdepth 2 -type f -print
+      find "$INSPECT_ROOT" -maxdepth 2 -type f -print
     fi
   else
     echo "No logs directory found under Ray session."

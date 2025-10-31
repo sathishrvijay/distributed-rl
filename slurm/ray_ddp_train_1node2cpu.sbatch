@@ -42,11 +42,25 @@ python ray_train/ddp_train.py \
 echo ""
 echo "Training script completed. Checking Ray logs..."
 # Display recent worker logs for debugging
-RAY_SESSION=$(ls -t /tmp/ray/ | grep session_ | head -1)
-if [ -n "$RAY_SESSION" ]; then
-  echo "Ray session: $RAY_SESSION"
-  echo "Worker logs:"
-  find /tmp/ray/$RAY_SESSION/logs -name "worker-*.out" -exec tail -n 50 {} \; 2>/dev/null || echo "No worker logs found"
+RAY_SESSION_DIR=$(ls -td /tmp/ray/session_* 2>/dev/null | head -1)
+if [ -n "$RAY_SESSION_DIR" ]; then
+  echo "Ray session directory: $RAY_SESSION_DIR"
+  if [ -d "$RAY_SESSION_DIR/logs" ]; then
+    echo "Available log files:"
+    ls "$RAY_SESSION_DIR/logs"
+    for pattern in "worker-*.out" "trainer_*.out" "python-core-worker*.log" "python-ray_driver*.log"; do
+      for file in "$RAY_SESSION_DIR"/logs/$pattern; do
+        [ -f "$file" ] || continue
+        echo ""
+        echo "--- Tail of $file ---"
+        tail -n 200 "$file"
+      done
+    done
+  else
+    echo "No logs directory found under Ray session."
+  fi
+else
+  echo "No Ray session directory found."
 fi
 
 # Stop Ray cluster

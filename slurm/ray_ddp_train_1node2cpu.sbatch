@@ -37,7 +37,8 @@ python ray_train/ddp_train.py \
   --use-gpu 0 \
   --num-samples 10240 \
   --batch-size 32 \
-  --epochs 3
+  --epochs 3 \
+  --verbose
 
 echo ""
 echo "Training script completed. Checking Ray logs..."

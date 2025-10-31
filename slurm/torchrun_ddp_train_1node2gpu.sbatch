@@ -7,8 +7,8 @@
 #SBATCH --mem=16G
 #SBATCH --time=00:20:00
 #SBATCH --chdir=$HOME/Development/distributed-rl
-#SBATCH --output=$HOME/Development/distributed-rl/slurm_logs/torchrun_ddp_1n2g_%j.out
-#SBATCH --error=$HOME/Development/distributed-rl/slurm_logs/torchrun_ddp_1n2g_%j.err
+#SBATCH --output=slurm_logs/torchrun_ddp_1n2g_%j.out
+#SBATCH --error=slurm_logs/torchrun_ddp_1n2g_%j.err
 
 # Notes:
 # - Requests 2 GPUs on a single node in the a100 partition

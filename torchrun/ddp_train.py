@@ -60,8 +60,13 @@ def train_loop_per_worker(rank: int, world_size: int, config: dict) -> None:
     device = resolve_device(config["use_gpu"])
     verbose = config.get("verbose", False)
     
+    # Always print device assignment for verification
+    print(f"[Rank {rank}/{world_size}] Assigned device: {device}", flush=True)
+    if device.type == "cuda":
+        print(f"[Rank {rank}] GPU name: {torch.cuda.get_device_name(device)}", flush=True)
+    
     if verbose:
-        print(f"[Rank {rank}/{world_size}] Starting training on device: {device}", flush=True)
+        print(f"[Rank {rank}] Starting training with verbose logging enabled", flush=True)
     
     # Create dataset - same dataset on all workers, but will be sharded by DistributedSampler
     dataset = SyntheticDataset(num_samples=config["num_samples"], input_dim=32, num_classes=2, seed=42)
@@ -172,6 +177,10 @@ if __name__ == "__main__":
     
     if rank == 0:
         print(f"Starting distributed training with {world_size} workers...")
+        print(f"Backend: {ddp_backend}")
+        print(f"CUDA available: {torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            print(f"CUDA device count: {torch.cuda.device_count()}")
         print(f"Configuration: {args.num_samples} samples, {args.batch_size} batch size, {args.epochs} epochs")
     
     try:

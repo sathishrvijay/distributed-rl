@@ -24,6 +24,9 @@ mkdir -p slurm_logs
 source slurm_setup/.venv/bin/activate
 export OMP_NUM_THREADS=1
 
+# Disable Ray log deduplication to see all worker output
+export RAY_DEDUP_LOGS=0
+
 # Optional: Enable NCCL debug (uncomment for troubleshooting)
 # export NCCL_DEBUG=INFO
 # export NCCL_IB_DISABLE=1
@@ -46,6 +49,16 @@ python ray_train/ddp_train.py \
   --num-samples 10240 \
   --batch-size 32 \
   --epochs 3
+
+echo ""
+echo "Training script completed. Checking Ray logs..."
+# Display recent worker logs for debugging
+RAY_SESSION=$(ls -t /tmp/ray/ | grep session_ | head -1)
+if [ -n "$RAY_SESSION" ]; then
+  echo "Ray session: $RAY_SESSION"
+  echo "Worker logs:"
+  find /tmp/ray/$RAY_SESSION/logs -name "worker-*.out" -exec tail -n 50 {} \; 2>/dev/null || echo "No worker logs found"
+fi
 
 # Stop Ray cluster
 echo "Stopping Ray cluster..."

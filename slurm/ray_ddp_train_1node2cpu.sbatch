@@ -20,6 +20,9 @@ mkdir -p slurm_logs
 # Activate virtual environment
 source slurm_setup/.venv/bin/activate
 
+# Disable Ray log deduplication to see all worker output
+export RAY_DEDUP_LOGS=0
+
 # Start Ray cluster on this node
 echo "Starting Ray cluster..."
 ray start --head --port=6379 --num-cpus=2
@@ -35,6 +38,16 @@ python ray_train/ddp_train.py \
   --num-samples 10240 \
   --batch-size 32 \
   --epochs 3
+
+echo ""
+echo "Training script completed. Checking Ray logs..."
+# Display recent worker logs for debugging
+RAY_SESSION=$(ls -t /tmp/ray/ | grep session_ | head -1)
+if [ -n "$RAY_SESSION" ]; then
+  echo "Ray session: $RAY_SESSION"
+  echo "Worker logs:"
+  find /tmp/ray/$RAY_SESSION/logs -name "worker-*.out" -exec tail -n 50 {} \; 2>/dev/null || echo "No worker logs found"
+fi
 
 # Stop Ray cluster
 echo "Stopping Ray cluster..."

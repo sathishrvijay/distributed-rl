@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Minimal SLURM job submission helper script.
+TODO 11/11/2025: currently unused; use sbatch directly instead.
 
 Usage:
     python submit_slurm_job.py <script1.sbatch> [script2.sbatch ...]
@@ -94,4 +95,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

@@ -8,10 +8,14 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel
 
 
-def setup_distributed():
-    """Initialize the distributed process group."""
+def setup_distributed(backend: str = "gloo"):
+    """Initialize the distributed process group.
+
+    backend:
+        "gloo" for CPU training, "nccl" for GPU training.
+    """
     # torchrun sets these environment variables automatically
-    torch.distributed.init_process_group(backend="gloo")  # Use gloo for CPU training
+    torch.distributed.init_process_group(backend=backend)
     rank = torch.distributed.get_rank()
     world_size = torch.distributed.get_world_size()
     return rank, world_size
@@ -56,8 +60,13 @@ def train_loop_per_worker(rank: int, world_size: int, config: dict) -> None:
     device = resolve_device(config["use_gpu"])
     verbose = config.get("verbose", False)
     
+    # Always print device assignment for verification
+    print(f"[Rank {rank}/{world_size}] Assigned device: {device}", flush=True)
+    if device.type == "cuda":
+        print(f"[Rank {rank}] GPU name: {torch.cuda.get_device_name(device)}", flush=True)
+    
     if verbose:
-        print(f"[Rank {rank}/{world_size}] Starting training on device: {device}", flush=True)
+        print(f"[Rank {rank}] Starting training with verbose logging enabled", flush=True)
     
     # Create dataset - same dataset on all workers, but will be sharded by DistributedSampler
     dataset = SyntheticDataset(num_samples=config["num_samples"], input_dim=32, num_classes=2, seed=42)
@@ -82,7 +91,14 @@ def train_loop_per_worker(rank: int, world_size: int, config: dict) -> None:
     
     # Move model to device and wrap with DDP
     model = model.to(device)
-    model = torch.nn.parallel.DistributedDataParallel(model)
+    if device.type == "cuda":
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        torch.cuda.set_device(local_rank)
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=[local_rank], output_device=local_rank
+        )
+    else:
+        model = torch.nn.parallel.DistributedDataParallel(model)
     
     if verbose:
         # Check if DDP wrapper was applied
@@ -107,7 +123,13 @@ def train_loop_per_worker(rank: int, world_size: int, config: dict) -> None:
         sampler.set_epoch(epoch)
         
         # Create a fresh DataLoader for each epoch
-        dataloader = DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=0, pin_memory=False)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            sampler=sampler,
+            num_workers=0,
+            pin_memory=(device.type == "cuda"),
+        )
         
         for batch_idx, batch in enumerate(dataloader):
             # Extract inputs and targets from batch
@@ -150,10 +172,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Setup distributed training
-    rank, world_size = setup_distributed()
+    ddp_backend = "nccl" if bool(args.use_gpu) and torch.cuda.is_available() else "gloo"
+    rank, world_size = setup_distributed(backend=ddp_backend)
     
     if rank == 0:
         print(f"Starting distributed training with {world_size} workers...")
+        print(f"Backend: {ddp_backend}")
+        print(f"CUDA available: {torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            print(f"CUDA device count: {torch.cuda.device_count()}")
         print(f"Configuration: {args.num_samples} samples, {args.batch_size} batch size, {args.epochs} epochs")
     
     try:

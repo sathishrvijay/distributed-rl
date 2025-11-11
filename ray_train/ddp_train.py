@@ -30,7 +30,13 @@ def train_loop_per_worker(config: dict) -> None:
     device = resolve_device()
     verbose = config.get("verbose", False)
     rank = get_context().get_world_rank()
+    world_size = get_context().get_world_size()
     batch_size = config.get("batch_size", 32)
+
+    # Always print device assignment for verification
+    print(f"[Rank {rank}/{world_size}] Assigned device: {device}", flush=True)
+    if device.type == "cuda":
+        print(f"[Rank {rank}] GPU name: {torch.cuda.get_device_name(device)}", flush=True)
 
     # Get dataset shard for this worker - Ray automatically shards the data
     dataset_shard = ray.train.get_dataset_shard("train")
@@ -113,8 +119,17 @@ if __name__ == "__main__":
 
     ray.init(address=args.address)
 
+    # Print configuration
+    print(f"Ray Train Configuration:")
+    print(f"  Number of workers: {args.num_workers}")
+    print(f"  Use GPU: {bool(args.use_gpu)}")
+    print(f"  CUDA available: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"  CUDA device count: {torch.cuda.device_count()}")
+    print(f"  Samples: {args.num_samples}, Batch size: {args.batch_size}, Epochs: {args.epochs}")
+
     # Create dataset once - will be automatically sharded across workers
-    print(f"Creating training dataset with {args.num_samples} samples...")
+    print(f"\nCreating training dataset with {args.num_samples} samples...")
     train_dataset = create_training_dataset(
         num_samples=args.num_samples,
         input_dim=32,
